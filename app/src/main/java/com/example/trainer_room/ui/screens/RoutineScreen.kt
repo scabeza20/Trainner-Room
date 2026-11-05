@@ -23,9 +23,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
@@ -137,7 +140,7 @@ fun RoutineScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            // Barra superior con Menú a la izquierda y Título Centrado
+            // Barra superior con Menú a la izquierda, Título Centrado y Botón de Alarma a la derecha
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -145,7 +148,7 @@ fun RoutineScreen(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Menú a la izquierda en vez del logo de Android
+                // Menú a la izquierda
                 IconButton(
                     onClick = onOpenSettings,
                     modifier = Modifier.size(48.dp)
@@ -180,8 +183,56 @@ fun RoutineScreen(
                     )
                 }
 
-                // Espaciador balanceador a la derecha (48dp para centrado perfecto)
-                Spacer(modifier = Modifier.size(48.dp))
+                // Botones a la derecha: Silenciar alerta actual / Control rápido de sonido
+                if (state.isAlarmPlaying) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Botón para desactivar la alarma sonora actual
+                        IconButton(
+                            onClick = { viewModel.silenceCurrentAlarm() },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(TrainerRoomTheme.extendedColors.deleteRed)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeOff,
+                                contentDescription = "Silenciar alarma actual",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // Botón para deshabilitar alertas posteriores y restablecer todo a 0
+                        IconButton(
+                            onClick = { viewModel.silenceAndResetAllToZero(disableFutureAlarms = true) },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(TrainerRoomTheme.extendedColors.surfaceHi)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.RestartAlt,
+                                contentDescription = "Silenciar todo y restablecer a 0",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                } else {
+                    IconButton(
+                        onClick = { viewModel.toggleAlarmEnabled() },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (state.alarmSoundEnabled) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                            contentDescription = if (state.alarmSoundEnabled) "Silenciar alertas futuras" else "Habilitar alertas",
+                            tint = if (state.alarmSoundEnabled) MaterialTheme.colorScheme.primary else TrainerRoomTheme.extendedColors.onMuted
+                        )
+                    }
+                }
             }
         },
         bottomBar = {
@@ -262,6 +313,71 @@ fun RoutineScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Banner de Alerta Activa con botones rápidos de silenciar y restablecer
+            if (state.isAlarmPlaying) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(TrainerRoomTheme.extendedColors.surfaceHi)
+                        .border(1.5.dp, TrainerRoomTheme.extendedColors.deleteRed, RoundedCornerShape(18.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NotificationsActive,
+                                contentDescription = "Alarma",
+                                tint = TrainerRoomTheme.extendedColors.deleteRed,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "¡Alarma sonando!",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { viewModel.silenceCurrentAlarm() },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = TrainerRoomTheme.extendedColors.primaryDim,
+                                    contentColor = TrainerRoomTheme.extendedColors.tonalContent
+                                ),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Text("Silenciar", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            }
+
+                            Button(
+                                onClick = { viewModel.silenceAndResetAllToZero(disableFutureAlarms = true) },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = TrainerRoomTheme.extendedColors.deleteRed,
+                                    contentColor = Color.White
+                                ),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Text("Parar y 0", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Tarjeta Contador Total (Centrada)
             TotalTimeCard(
                 mainTargetSeconds = state.mainTargetSeconds,

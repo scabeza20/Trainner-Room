@@ -22,7 +22,7 @@ class AlarmSoundPlayer(private val context: Context) : IAlarmSoundPlayer {
         stop()
 
         try {
-            mediaPlayer = MediaPlayer.create(context.applicationContext, R.raw.nuclear_alarm)?.apply {
+            mediaPlayer = MediaPlayer.create(context.applicationContext, R.raw.alarma)?.apply {
                 isLooping = true
                 start()
             }

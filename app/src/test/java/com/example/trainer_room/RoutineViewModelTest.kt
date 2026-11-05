@@ -24,6 +24,7 @@ class FakeTrainerPreferences : ITrainerPreferences {
     var savedDefaultCount: Int = 3
     var savedAlarmEnabled: Boolean = true
     var savedAlarmDuration: Int = 3
+    var savedAlarmEachRound: Boolean = true
     var savedRoutineTitle: String = "Piernas"
     var savedMainTargetSeconds: Int = 0
 
@@ -50,6 +51,11 @@ class FakeTrainerPreferences : ITrainerPreferences {
     override fun loadAlarmDuration(): Int = savedAlarmDuration
     override fun saveAlarmDuration(seconds: Int) {
         savedAlarmDuration = seconds
+    }
+
+    override fun isAlarmOnEachRound(): Boolean = savedAlarmEachRound
+    override fun saveAlarmOnEachRound(enabled: Boolean) {
+        savedAlarmEachRound = enabled
     }
 
     override fun loadRoutineTitle(): String = savedRoutineTitle
@@ -107,7 +113,6 @@ class RoutineViewModelTest {
 
     @Test
     fun initialState_hasDefaultThreeExercises_andAllZeroTime() {
-        // Requisito: Por defecto deben ser 3 contadores y todos inicializados en 00:00:00
         val state = viewModel.uiState.value
         assertEquals("Piernas", state.title)
         assertEquals(3, state.exercises.size)
@@ -115,7 +120,6 @@ class RoutineViewModelTest {
         assertEquals("Zancadas", state.exercises[1].name)
         assertEquals("Puente de glúteos", state.exercises[2].name)
 
-        // Todos en 00:00:00
         assertEquals(0, state.mainElapsedSeconds)
         state.exercises.forEach {
             assertEquals(0, it.elapsedSeconds)
@@ -126,22 +130,18 @@ class RoutineViewModelTest {
 
     @Test
     fun persistence_deletedCountersRemainDeletedWhenReopeningApp() {
-        // Requisito: Conservar el estado de los contadores eliminados al volver a entrar
         val initialList = viewModel.uiState.value.exercises
         assertEquals(3, initialList.size)
         val secondId = initialList[1].id
 
-        // Eliminar el segundo ejercicio ("Zancadas")
         viewModel.deleteExercise(secondId)
         assertEquals(2, viewModel.uiState.value.exercises.size)
         assertFalse(viewModel.uiState.value.exercises.any { it.id == secondId })
 
-        // Verificar que se guardó en preferencias
         assertNotNull(fakePreferences.savedExercisesList)
         assertEquals(2, fakePreferences.savedExercisesList!!.size)
         assertFalse(fakePreferences.savedExercisesList!!.any { it.id == secondId })
 
-        // Simular volver a entrar a la app creando un nuevo ViewModel con las mismas preferencias
         val newViewModel = RoutineViewModel(
             preferences = fakePreferences,
             soundPlayer = fakeSoundPlayer,
@@ -152,7 +152,6 @@ class RoutineViewModelTest {
         assertEquals(2, restoredState.exercises.size)
         assertFalse(restoredState.exercises.any { it.id == secondId })
 
-        // Verificar que los contadores están en 00:00:00 al volver a ingresar
         restoredState.exercises.forEach {
             assertEquals(0, it.elapsedSeconds)
             assertEquals(1, it.currentRep)
@@ -189,7 +188,6 @@ class RoutineViewModelTest {
         assertEquals(2400, state.mainTargetSeconds)
         assertEquals(0, state.mainElapsedSeconds)
         assertFalse(state.isMainRunning)
-        // No existe función deleteMainRoutine
     }
 
     @Test
@@ -213,7 +211,6 @@ class RoutineViewModelTest {
 
     @Test
     fun nuclearAlarm_triggersWhenExerciseCompleted_ifEnabled() {
-        // Requisito: Sonido de alerta de alarma nuclear
         val exercise = viewModel.uiState.value.exercises.first()
         val id = exercise.id
 
@@ -229,7 +226,6 @@ class RoutineViewModelTest {
         )
         viewModel.toggleExercisePlay(id)
 
-        // Al completarse la serie:
         viewModel.tickSecond()
 
         assertTrue(fakeSoundPlayer.isPlaying)
@@ -256,6 +252,129 @@ class RoutineViewModelTest {
 
         assertFalse(fakeSoundPlayer.isPlaying)
         assertNull(fakeSoundPlayer.playedAlarmDuration)
+    }
+
+    @Test
+    fun alarmTrigger_eachRoundVsOnlyFinalRound_persistence() {
+        val exercise = viewModel.uiState.value.exercises.first()
+        val id = exercise.id
+
+        viewModel.setAlarmSoundEnabled(true)
+        viewModel.setAlarmDurationSeconds(3)
+        viewModel.editExercise(
+            id = id,
+            name = exercise.name,
+            targetSeconds = 2,
+            badgeColorIndex = 0,
+            badgeShapeIndex = 0,
+            totalReps = 2
+        )
+
+        // 1. Caso alarmOnEachRound = true (debe sonar en cada ronda)
+        viewModel.setAlarmOnEachRound(true)
+        assertTrue(viewModel.uiState.value.alarmOnEachRound)
+        assertTrue(fakePreferences.savedAlarmEachRound)
+
+        viewModel.toggleExercisePlay(id)
+        viewModel.tickSecond() // 1s
+        assertFalse(fakeSoundPlayer.isPlaying)
+
+        viewModel.tickSecond() // 2s -> completa ronda 1, pasa a ronda 2
+        assertTrue(fakeSoundPlayer.isPlaying)
+        fakeSoundPlayer.isPlaying = false
+
+        viewModel.tickSecond() // 1s de ronda 2
+        assertFalse(fakeSoundPlayer.isPlaying)
+
+        viewModel.tickSecond() // 2s de ronda 2 -> completa serie final
+        assertTrue(fakeSoundPlayer.isPlaying)
+        fakeSoundPlayer.isPlaying = false
+
+        // 2. Caso alarmOnEachRound = false (NO debe sonar en ronda 1, SOLO en ronda final)
+        viewModel.setAlarmOnEachRound(false)
+        assertFalse(viewModel.uiState.value.alarmOnEachRound)
+        assertFalse(fakePreferences.savedAlarmEachRound)
+
+        viewModel.resetExercise(id)
+        viewModel.toggleExercisePlay(id)
+
+        viewModel.tickSecond() // 1s
+        viewModel.tickSecond() // 2s -> completa ronda 1
+        assertFalse(fakeSoundPlayer.isPlaying) // NO debe sonar
+
+        viewModel.tickSecond() // 1s de ronda 2
+        viewModel.tickSecond() // 2s de ronda 2 -> completa serie final
+        assertTrue(fakeSoundPlayer.isPlaying) // SÍ debe sonar
+
+        // 3. Verificar que persiste al recrear el ViewModel
+        val restoredVm = RoutineViewModel(
+            preferences = fakePreferences,
+            soundPlayer = fakeSoundPlayer,
+            coroutineScope = testScope
+        )
+        assertFalse(restoredVm.uiState.value.alarmOnEachRound)
+    }
+
+    @Test
+    fun silenceCurrentAlarm_stopsAudioWithoutDisablingFutureAlarms() {
+        val exercise = viewModel.uiState.value.exercises.first()
+        val id = exercise.id
+
+        viewModel.setAlarmSoundEnabled(true)
+        viewModel.editExercise(
+            id = id,
+            name = exercise.name,
+            targetSeconds = 1,
+            badgeColorIndex = 0,
+            badgeShapeIndex = 0,
+            totalReps = 1
+        )
+        viewModel.toggleExercisePlay(id)
+        viewModel.tickSecond() // Detona la alarma
+
+        assertTrue(viewModel.uiState.value.isAlarmPlaying)
+        assertTrue(fakeSoundPlayer.isPlaying)
+
+        // Silenciar alerta actual
+        viewModel.silenceCurrentAlarm()
+
+        assertFalse(viewModel.uiState.value.isAlarmPlaying)
+        assertFalse(fakeSoundPlayer.isPlaying)
+        assertTrue(viewModel.uiState.value.alarmSoundEnabled) // Sigue habilitado para posteriores
+    }
+
+    @Test
+    fun silenceAndResetAllToZero_stopsAudio_disablesFutureAlarms_andResetsCounters() {
+        val exercise = viewModel.uiState.value.exercises.first()
+        val id = exercise.id
+
+        viewModel.setAlarmSoundEnabled(true)
+        viewModel.toggleMainPlayPause()
+        viewModel.toggleExercisePlay(id)
+
+        viewModel.tickSecond()
+        viewModel.tickSecond()
+
+        // Poner en marcha alarma
+        viewModel.testAlarmSound()
+        assertTrue(viewModel.uiState.value.isAlarmPlaying)
+        assertTrue(fakeSoundPlayer.isPlaying)
+
+        // Parada de emergencia: silenciar todo y poner a 0
+        viewModel.silenceAndResetAllToZero(disableFutureAlarms = true)
+
+        assertFalse(viewModel.uiState.value.isAlarmPlaying)
+        assertFalse(fakeSoundPlayer.isPlaying)
+        assertFalse(viewModel.uiState.value.alarmSoundEnabled)
+        assertFalse(fakePreferences.savedAlarmEnabled)
+        assertEquals(0, viewModel.uiState.value.mainElapsedSeconds)
+        assertFalse(viewModel.uiState.value.isMainRunning)
+        assertNull(viewModel.uiState.value.activeRunningExerciseId)
+        viewModel.uiState.value.exercises.forEach {
+            assertEquals(0, it.elapsedSeconds)
+            assertEquals(1, it.currentRep)
+            assertFalse(it.isCompleted)
+        }
     }
 
     @Test

@@ -53,6 +53,7 @@ class RoutineViewModel(
         val mainTarget = preferences?.loadMainTargetSeconds() ?: 0
         val alarmEnabled = preferences?.isAlarmEnabled() ?: true
         val alarmDuration = preferences?.loadAlarmDuration() ?: 3
+        val alarmOnEachRound = preferences?.isAlarmOnEachRound() ?: true
 
         return RoutineState(
             title = routineTitle,
@@ -67,6 +68,8 @@ class RoutineViewModel(
             defaultCountersCount = defaultCount,
             alarmSoundEnabled = alarmEnabled,
             alarmDurationSeconds = alarmDuration,
+            alarmOnEachRound = alarmOnEachRound,
+            isAlarmPlaying = false,
             isTestingAlarm = false
         )
     }
@@ -105,23 +108,59 @@ class RoutineViewModel(
         _uiState.update { it.copy(alarmSoundEnabled = enabled) }
     }
 
+    fun toggleAlarmEnabled() {
+        setAlarmSoundEnabled(!_uiState.value.alarmSoundEnabled)
+    }
+
     fun setAlarmDurationSeconds(seconds: Int) {
         val safeSeconds = seconds.coerceIn(1, 10)
         preferences?.saveAlarmDuration(safeSeconds)
         _uiState.update { it.copy(alarmDurationSeconds = safeSeconds) }
     }
 
+    fun setAlarmOnEachRound(enabled: Boolean) {
+        preferences?.saveAlarmOnEachRound(enabled)
+        _uiState.update { it.copy(alarmOnEachRound = enabled) }
+    }
+
     fun testAlarmSound() {
         val duration = _uiState.value.alarmDurationSeconds
-        _uiState.update { it.copy(isTestingAlarm = true) }
+        _uiState.update { it.copy(isTestingAlarm = true, isAlarmPlaying = true) }
         soundPlayer?.playAlarm(duration) {
-            _uiState.update { it.copy(isTestingAlarm = false) }
+            _uiState.update { it.copy(isTestingAlarm = false, isAlarmPlaying = false) }
         }
     }
 
     fun stopAlarmSound() {
         soundPlayer?.stop()
-        _uiState.update { it.copy(isTestingAlarm = false) }
+        _uiState.update { it.copy(isTestingAlarm = false, isAlarmPlaying = false) }
+    }
+
+    fun silenceCurrentAlarm() {
+        soundPlayer?.stop()
+        _uiState.update { it.copy(isAlarmPlaying = false, isTestingAlarm = false) }
+    }
+
+    fun silenceAndResetAllToZero(disableFutureAlarms: Boolean = true) {
+        soundPlayer?.stop()
+        if (disableFutureAlarms) {
+            preferences?.saveAlarmEnabled(false)
+        }
+        _uiState.update { state ->
+            val resetExercises = state.exercises.map {
+                it.copy(elapsedSeconds = 0, currentRep = 1, isCompleted = false)
+            }
+            state.copy(
+                mainElapsedSeconds = 0,
+                isMainRunning = false,
+                exercises = resetExercises,
+                activeRunningExerciseId = null,
+                isAlarmPlaying = false,
+                isTestingAlarm = false,
+                alarmSoundEnabled = if (disableFutureAlarms) false else state.alarmSoundEnabled
+            )
+        }
+        checkTickerStatus()
     }
 
     fun resetToDefaultExercises() {
@@ -180,13 +219,19 @@ class RoutineViewModel(
                     if (nextElapsed >= exercise.targetSeconds) {
                         // Comprobación de repeticiones
                         if (exercise.currentRep < exercise.totalReps) {
+                            // Ronda intermedia completada
+                            if (state.alarmSoundEnabled && state.alarmOnEachRound) {
+                                shouldTriggerAlarm = true
+                                alarmDuration = state.alarmDurationSeconds
+                            }
                             exercise.copy(
                                 currentRep = exercise.currentRep + 1,
                                 elapsedSeconds = 0,
                                 isCompleted = false
                             )
                         } else {
-                            newRunningId = null // Detener conteo de esta serie
+                            // Todas las rondas completadas
+                            newRunningId = null
                             if (state.alarmSoundEnabled) {
                                 shouldTriggerAlarm = true
                                 alarmDuration = state.alarmDurationSeconds
@@ -208,12 +253,15 @@ class RoutineViewModel(
                 mainElapsedSeconds = newMainElapsed,
                 isMainRunning = newIsMainRunning,
                 exercises = updatedExercises,
-                activeRunningExerciseId = newRunningId
+                activeRunningExerciseId = newRunningId,
+                isAlarmPlaying = if (shouldTriggerAlarm) true else state.isAlarmPlaying
             )
         }
 
         if (shouldTriggerAlarm) {
-            soundPlayer?.playAlarm(alarmDuration)
+            soundPlayer?.playAlarm(alarmDuration) {
+                _uiState.update { it.copy(isAlarmPlaying = false) }
+            }
         }
 
         checkTickerStatus()

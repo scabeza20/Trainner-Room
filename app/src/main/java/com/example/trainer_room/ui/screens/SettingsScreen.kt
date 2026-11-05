@@ -230,11 +230,11 @@ fun SettingsScreen(
                 }
             }
 
-            // 3. Tarjeta: Alerta Sonora de Alarma Nuclear
+            // 3. Tarjeta: Alerta Sonora de Alarma
             item {
                 SettingsCard(
-                    title = "Alarma Nuclear",
-                    subtitle = "Sonido de alerta estridente al completar todas las repeticiones de una serie"
+                    title = "Audio de Alerta",
+                    subtitle = "Sonido de alarma (alarma.opus) al terminar rondas o la serie completa"
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -252,7 +252,7 @@ fun SettingsScreen(
                                 modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                text = "Activar alarma sonora",
+                                text = "Activar alerta sonora",
                                 fontSize = 15.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -271,7 +271,59 @@ fun SettingsScreen(
                     }
 
                     if (state.alarmSoundEnabled) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Selector de momento: Todas las rondas vs Solo al finalizar serie
+                        Text(
+                            text = "Momento de la alerta",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = state.alarmOnEachRound,
+                                onClick = { viewModel.setAlarmOnEachRound(true) },
+                                label = { Text("Todas las rondas", fontSize = 13.sp) },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = TrainerRoomTheme.extendedColors.primaryDim,
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            FilterChip(
+                                selected = !state.alarmOnEachRound,
+                                onClick = { viewModel.setAlarmOnEachRound(false) },
+                                label = { Text("Solo al terminar serie", fontSize = 13.sp) },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = TrainerRoomTheme.extendedColors.primaryDim,
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Text(
+                            text = if (state.alarmOnEachRound) {
+                                "La alerta sonará al concluir cada repetición o ronda de la serie."
+                            } else {
+                                "La alerta solo sonará cuando se completen todas las rondas de la serie."
+                            },
+                            fontSize = 12.sp,
+                            color = TrainerRoomTheme.extendedColors.onMuted,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -361,7 +413,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (state.isTestingAlarm) "Detener prueba de alarma" else "Probar alarma nuclear (${state.alarmDurationSeconds}s)",
+                                text = if (state.isTestingAlarm) "Detener prueba de alarma" else "Probar alerta (${state.alarmDurationSeconds}s)",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
                             )

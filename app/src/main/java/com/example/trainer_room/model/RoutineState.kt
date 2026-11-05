@@ -22,6 +22,8 @@ data class RoutineState(
     val defaultCountersCount: Int = 3,
     val alarmSoundEnabled: Boolean = true,
     val alarmDurationSeconds: Int = 3,
+    val alarmOnEachRound: Boolean = true,
+    val isAlarmPlaying: Boolean = false,
     val isTestingAlarm: Boolean = false
 ) {
     val completedExercisesCount: Int

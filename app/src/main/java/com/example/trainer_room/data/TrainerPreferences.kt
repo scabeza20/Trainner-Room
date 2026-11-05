@@ -17,6 +17,8 @@ interface ITrainerPreferences {
     fun saveAlarmEnabled(enabled: Boolean)
     fun loadAlarmDuration(): Int
     fun saveAlarmDuration(seconds: Int)
+    fun isAlarmOnEachRound(): Boolean
+    fun saveAlarmOnEachRound(enabled: Boolean)
     fun loadRoutineTitle(): String
     fun saveRoutineTitle(title: String)
     fun loadMainTargetSeconds(): Int
@@ -33,6 +35,7 @@ class TrainerPreferences(context: Context) : ITrainerPreferences {
         private const val KEY_DEFAULT_COUNTERS_COUNT = "default_counters_count"
         private const val KEY_ALARM_ENABLED = "alarm_sound_enabled"
         private const val KEY_ALARM_DURATION = "alarm_sound_duration"
+        private const val KEY_ALARM_EACH_ROUND = "alarm_sound_each_round"
         private const val KEY_ROUTINE_TITLE = "routine_title"
         private const val KEY_MAIN_TARGET = "main_target_seconds"
     }
@@ -97,6 +100,14 @@ class TrainerPreferences(context: Context) : ITrainerPreferences {
 
     override fun saveAlarmDuration(seconds: Int) {
         prefs.edit().putInt(KEY_ALARM_DURATION, seconds.coerceIn(1, 10)).apply()
+    }
+
+    override fun isAlarmOnEachRound(): Boolean {
+        return prefs.getBoolean(KEY_ALARM_EACH_ROUND, true)
+    }
+
+    override fun saveAlarmOnEachRound(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_ALARM_EACH_ROUND, enabled).apply()
     }
 
     override fun loadRoutineTitle(): String {
