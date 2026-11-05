@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -23,10 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -51,6 +54,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -61,8 +65,6 @@ import com.example.trainer_room.ui.RoutineViewModel
 import com.example.trainer_room.ui.components.AddSeriesModal
 import com.example.trainer_room.ui.components.EditMainRoutineModal
 import com.example.trainer_room.ui.theme.BadgeShapesList
-import com.example.trainer_room.ui.theme.DarkBadgeGreen
-import com.example.trainer_room.ui.theme.LightBadgeGreen
 import com.example.trainer_room.ui.theme.TrainerRoomTheme
 import com.example.trainer_room.ui.theme.getBadgeColors
 import java.util.Locale
@@ -123,6 +125,7 @@ fun AndroidBotIcon(
 @Composable
 fun RoutineScreen(
     viewModel: RoutineViewModel,
+    onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -130,188 +133,265 @@ fun RoutineScreen(
     var showEditMainModal by remember { mutableStateOf(false) }
     var exerciseToEdit by remember { mutableStateOf<ExerciseItem?>(null) }
 
-    TrainerRoomTheme(darkTheme = state.isDarkTheme) {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
-            topBar = {
-                // Barra superior de la app
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 16.dp, top = 40.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            // Barra superior con Menú a la izquierda y Título Centrado
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Menú a la izquierda en vez del logo de Android
+                IconButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.clickable { showEditMainModal = true }
-                    ) {
-                        AndroidBotIcon(tint = TrainerRoomTheme.extendedColors.androidGreen)
-                        Text(
-                            text = state.title,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-
-                    // Selector de tema Claro / Oscuro
-                    IconButton(onClick = { viewModel.toggleTheme() }) {
-                        Icon(
-                            imageVector = if (state.isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = "Cambiar tema",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menú de ajustes",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
                 }
-            },
-            bottomBar = {
-                // Barra inferior fija para la lista de ejercicios
+
+                // Título de la rutina centrado
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showEditMainModal = true }
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Botón Tonal + Serie
-                    Button(
-                        onClick = { 
-                            exerciseToEdit = null
-                            showModal = true 
-                        },
-                        modifier = Modifier.height(52.dp),
-                        shape = RoundedCornerShape(26.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = TrainerRoomTheme.extendedColors.primaryDim,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Añadir serie",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Serie",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    AndroidBotIcon(
+                        tint = TrainerRoomTheme.extendedColors.androidGreen,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(
+                        text = state.title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+                }
 
-                    // Botón Relleno Pausar / Iniciar para la rutina de abajo
-                    Button(
-                        onClick = { viewModel.togglePlayPause() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(52.dp),
-                        shape = RoundedCornerShape(26.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (state.isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (state.isRunning) "Pausar" else "Iniciar",
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (state.isRunning) "Pausar serie" else "Iniciar serie",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                // Espaciador balanceador a la derecha (48dp para centrado perfecto)
+                Spacer(modifier = Modifier.size(48.dp))
+            }
+        },
+        bottomBar = {
+            // Barra inferior fija con botones "+ Serie" e "Iniciar / Pausar"
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Botón Tonal + Serie
+                Button(
+                    onClick = {
+                        exerciseToEdit = null
+                        showModal = true
+                    },
+                    modifier = Modifier.height(52.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TrainerRoomTheme.extendedColors.primaryDim,
+                        contentColor = TrainerRoomTheme.extendedColors.tonalContent
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Añadir serie",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Serie",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Botón Relleno Iniciar / Pausar para la serie activa
+                val isAnyRunning = state.activeRunningExerciseId != null
+                val targetExerciseId = state.activeRunningExerciseId
+                    ?: state.activeExerciseId
+                    ?: state.exercises.firstOrNull()?.id
+
+                Button(
+                    onClick = {
+                        if (targetExerciseId != null) {
+                            viewModel.toggleExercisePlay(targetExerciseId)
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(
+                        imageVector = if (isAnyRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isAnyRunning) "Pausar" else "Iniciar",
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isAnyRunning) "Pausar serie" else "Iniciar serie",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
-        ) { innerPadding ->
-            Column(
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Tarjeta Contador Total (Centrada)
+            TotalTimeCard(
+                mainTargetSeconds = state.mainTargetSeconds,
+                mainElapsedSeconds = state.mainElapsedSeconds,
+                isMainRunning = state.isMainRunning,
+                activeExerciseIndex = state.activeExerciseIndex,
+                totalExercises = state.exercises.size,
+                onToggleMainPlay = { viewModel.toggleMainPlayPause() },
+                onResetMain = { viewModel.resetMainCounter() },
+                onClick = { showEditMainModal = true }
+            )
+
+            // Lista de Ejercicios Inferior con claves estables
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Tarjeta Contador Total Independiente
-                TotalTimeCard(
-                    mainTargetSeconds = state.mainTargetSeconds,
-                    mainElapsedSeconds = state.mainElapsedSeconds,
-                    isMainRunning = state.isMainRunning,
-                    onToggleMainPlay = { viewModel.toggleMainPlayPause() },
-                    onClick = { showEditMainModal = true }
-                )
+                itemsIndexed(state.exercises, key = { _, exercise -> exercise.id }) { index, exercise ->
+                    val isRunning = state.activeRunningExerciseId == exercise.id
+                    val isActive = state.activeExerciseId == exercise.id || isRunning
 
-                // Lista de Ejercicios Inferior
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    itemsIndexed(state.exercises) { index, exercise ->
-                        val isActive = index == state.activeExerciseIndex
-                        ExerciseRow(
-                            index = index + 1,
-                            exercise = exercise,
-                            isActive = isActive,
-                            isGlobalRunning = state.isRunning,
-                            isDark = state.isDarkTheme,
-                            onEdit = { 
-                                exerciseToEdit = exercise
-                                showModal = true
-                            },
-                            onTogglePlay = {
-                                if (isActive) {
-                                    viewModel.togglePlayPause()
-                                } else {
-                                    viewModel.selectExercise(index)
-                                }
-                            }
-                        )
-                    }
+                    ExerciseRow(
+                        index = index + 1,
+                        exercise = exercise,
+                        isActive = isActive,
+                        isRunning = isRunning,
+                        isDark = state.isDarkTheme,
+                        onEdit = {
+                            exerciseToEdit = exercise
+                            showModal = true
+                        },
+                        onTogglePlay = {
+                            viewModel.toggleExercisePlay(exercise.id)
+                        },
+                        onReset = {
+                            viewModel.resetExercise(exercise.id)
+                        },
+                        onIncrementReps = {
+                            viewModel.incrementReps(exercise.id)
+                        },
+                        onDecrementReps = {
+                            viewModel.decrementReps(exercise.id)
+                        }
+                    )
+                }
 
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
+    }
 
-        // Modal para añadir o editar series
-        if (showModal) {
-            AddSeriesModal(
-                initialExercise = exerciseToEdit,
-                onDismissRequest = { 
-                    showModal = false
-                    exerciseToEdit = null
-                },
-                onSaveSeries = { id, name, duration, colorIdx, shapeIdx ->
-                    if (id == null) {
-                        viewModel.addExercise(name, duration, colorIdx, shapeIdx)
-                    } else {
-                        viewModel.editExercise(id, name, duration, colorIdx, shapeIdx)
-                    }
-                },
-                onDeleteSeries = { id ->
-                    viewModel.deleteExercise(id)
+    // Modal para añadir o editar series (prototipo-modal.png)
+    if (showModal) {
+        AddSeriesModal(
+            initialExercise = exerciseToEdit,
+            onDismissRequest = {
+                showModal = false
+                exerciseToEdit = null
+            },
+            onSaveSeries = { id, name, duration, colorIdx, shapeIdx, totalReps ->
+                if (id == null) {
+                    viewModel.addExercise(name, duration, colorIdx, shapeIdx, totalReps)
+                } else {
+                    viewModel.editExercise(id, name, duration, colorIdx, shapeIdx, totalReps)
                 }
-            )
+            },
+            onDeleteSeries = { id ->
+                viewModel.deleteExercise(id)
+            }
+        )
+    }
+
+    // Modal para editar la rutina principal (sin opción de eliminar)
+    if (showEditMainModal) {
+        EditMainRoutineModal(
+            currentTitle = state.title,
+            currentTargetSeconds = state.mainTargetSeconds,
+            onDismissRequest = { showEditMainModal = false },
+            onSaveMainRoutine = { title, targetSecs ->
+                viewModel.updateMainRoutine(title, targetSecs)
+            }
+        )
+    }
+}
+
+@Composable
+fun RoundsIndicator(
+    currentIndex: Int,
+    totalCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        val safeTotal = totalCount.coerceAtLeast(1)
+        val safeCurrent = currentIndex.coerceIn(0, safeTotal - 1)
+
+        for (i in 0 until safeTotal) {
+            val isActive = i == safeCurrent
+            if (isActive) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 28.dp, height = 8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(TrainerRoomTheme.extendedColors.primaryDim)
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
         }
 
-        // Modal para editar la rutina principal
-        if (showEditMainModal) {
-            EditMainRoutineModal(
-                currentTitle = state.title,
-                currentTargetSeconds = state.mainTargetSeconds,
-                onDismissRequest = { showEditMainModal = false },
-                onSaveMainRoutine = { title, targetSecs ->
-                    viewModel.updateMainRoutine(title, targetSecs)
-                }
-            )
-        }
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = "Serie ${safeCurrent + 1} de $safeTotal",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -320,7 +400,10 @@ fun TotalTimeCard(
     mainTargetSeconds: Int,
     mainElapsedSeconds: Int,
     isMainRunning: Boolean,
+    activeExerciseIndex: Int,
+    totalExercises: Int,
     onToggleMainPlay: () -> Unit,
+    onResetMain: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -337,19 +420,19 @@ fun TotalTimeCard(
     val onMuted = TrainerRoomTheme.extendedColors.onMuted
 
     val annotatedTimeString = buildAnnotatedString {
-        withStyle(SpanStyle(fontSize = 52.sp, fontWeight = FontWeight.Normal)) {
+        withStyle(SpanStyle(fontSize = 56.sp, fontWeight = FontWeight.Normal)) {
             append(String.format(Locale.US, "%02d", h))
         }
         withStyle(SpanStyle(fontSize = 15.sp, color = onMuted)) {
             append("h ")
         }
-        withStyle(SpanStyle(fontSize = 52.sp, fontWeight = FontWeight.Normal)) {
+        withStyle(SpanStyle(fontSize = 56.sp, fontWeight = FontWeight.Normal)) {
             append(String.format(Locale.US, "%02d", m))
         }
         withStyle(SpanStyle(fontSize = 15.sp, color = onMuted)) {
             append("m ")
         }
-        withStyle(SpanStyle(fontSize = 52.sp, fontWeight = FontWeight.Normal)) {
+        withStyle(SpanStyle(fontSize = 56.sp, fontWeight = FontWeight.Normal)) {
             append(String.format(Locale.US, "%02d", s))
         }
         withStyle(SpanStyle(fontSize = 15.sp, color = onMuted)) {
@@ -360,48 +443,83 @@ fun TotalTimeCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(28.dp))
             .background(MaterialTheme.colorScheme.surface)
             .clickable { onClick() }
             .padding(vertical = 16.dp, horizontal = 20.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text(
                 text = "Tiempo total de la rutina",
                 fontSize = 13.sp,
-                color = onMuted
+                color = onMuted,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            Text(text = annotatedTimeString)
+            Text(
+                text = annotatedTimeString,
+                textAlign = TextAlign.Center
+            )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Botón pequeño de inicio / pausa para el contador principal independiente
-            Button(
-                onClick = onToggleMainPlay,
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = TrainerRoomTheme.extendedColors.primaryDim,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                modifier = Modifier.height(36.dp)
+            // Indicador de rondas / series centrado
+            RoundsIndicator(
+                currentIndex = activeExerciseIndex,
+                totalCount = totalExercises
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Controles del contador de sesión centrados
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    imageVector = if (isMainRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isMainRunning) "Pausar" else "Iniciar",
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = if (isMainRunning) "Pausar" else "Iniciar",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                Button(
+                    onClick = onToggleMainPlay,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TrainerRoomTheme.extendedColors.primaryDim,
+                        contentColor = TrainerRoomTheme.extendedColors.tonalContent
+                    ),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isMainRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isMainRunning) "Pausar sesión" else "Iniciar sesión",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isMainRunning) "Pausar sesión" else "Iniciar sesión",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                if (mainElapsedSeconds > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = onResetMain,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.RestartAlt,
+                            contentDescription = "Reiniciar sesión",
+                            tint = onMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -412,10 +530,13 @@ fun ExerciseRow(
     index: Int,
     exercise: ExerciseItem,
     isActive: Boolean,
-    isGlobalRunning: Boolean,
+    isRunning: Boolean,
     isDark: Boolean,
     onEdit: () -> Unit,
     onTogglePlay: () -> Unit,
+    onReset: () -> Unit,
+    onIncrementReps: () -> Unit,
+    onDecrementReps: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val badgeColors = getBadgeColors(isDark)
@@ -428,7 +549,8 @@ fun ExerciseRow(
     val s = secs % 60
 
     val onMuted = TrainerRoomTheme.extendedColors.onMuted
-    val okColor = if (isDark) DarkBadgeGreen else LightBadgeGreen
+    val okColor = TrainerRoomTheme.extendedColors.ok
+    val onShapeColor = TrainerRoomTheme.extendedColors.onShape
 
     val formattedRowTime = buildAnnotatedString {
         withStyle(SpanStyle(fontSize = 22.sp, fontWeight = FontWeight.Normal)) {
@@ -451,7 +573,6 @@ fun ExerciseRow(
         }
     }
 
-    val isRowRunning = isActive && isGlobalRunning
     val rowBackground = if (isActive) TrainerRoomTheme.extendedColors.surfaceHi else MaterialTheme.colorScheme.surface
 
     Row(
@@ -466,30 +587,32 @@ fun ExerciseRow(
                     shape = RoundedCornerShape(20.dp)
                 ) else Modifier
             )
-            .clickable { onEdit() }
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Badge Numérica
+        // Insignia Numérica b1-b5 con color de texto --on-shape (index.html)
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(badgeShape)
-                .background(badgeColor),
+                .background(badgeColor)
+                .clickable { onEdit() },
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = index.toString(),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = onShapeColor
             )
         }
 
-        // Info del ejercicio
+        // Info del ejercicio (Nombre y Tiempo)
         Column(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onEdit() }
         ) {
             Text(
                 text = exercise.name,
@@ -506,7 +629,64 @@ fun ExerciseRow(
             )
         }
 
-        // Botón de Acción de Fila
+        // Stepper de Repeticiones [-] 1/3 [+]
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            IconButton(
+                onClick = onDecrementReps,
+                modifier = Modifier.size(26.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = "Disminuir repeticiones",
+                    modifier = Modifier.size(14.dp),
+                    tint = onMuted
+                )
+            }
+
+            Text(
+                text = "${exercise.currentRep}/${exercise.totalReps}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (exercise.isCompleted) onMuted else MaterialTheme.colorScheme.onSurface
+            )
+
+            IconButton(
+                onClick = onIncrementReps,
+                modifier = Modifier.size(26.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Aumentar repeticiones",
+                    modifier = Modifier.size(14.dp),
+                    tint = onMuted
+                )
+            }
+        }
+
+        // Botón de Reinicio Individual (↺)
+        IconButton(
+            onClick = onReset,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            Icon(
+                imageVector = Icons.Default.RestartAlt,
+                contentDescription = "Reiniciar serie",
+                tint = onMuted,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        // Botón de Acción de Fila (Play / Pause / Check)
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -514,7 +694,7 @@ fun ExerciseRow(
                 .background(
                     when {
                         exercise.isCompleted -> Color.Transparent
-                        isRowRunning -> MaterialTheme.colorScheme.primary
+                        isRunning -> MaterialTheme.colorScheme.primary
                         else -> TrainerRoomTheme.extendedColors.primaryDim
                     }
                 )
@@ -530,7 +710,7 @@ fun ExerciseRow(
                         modifier = Modifier.size(24.dp)
                     )
                 }
-                isRowRunning -> {
+                isRunning -> {
                     Icon(
                         imageVector = Icons.Default.Pause,
                         contentDescription = "Pausar",
@@ -542,7 +722,7 @@ fun ExerciseRow(
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Iniciar",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = TrainerRoomTheme.extendedColors.tonalContent,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -555,16 +735,5 @@ fun ExerciseRow(
 @Composable
 fun RoutineScreenDarkPreview() {
     val viewModel = remember { RoutineViewModel() }
-    RoutineScreen(viewModel = viewModel)
-}
-
-@Preview(showBackground = true, name = "Claro")
-@Composable
-fun RoutineScreenLightPreview() {
-    val viewModel = remember {
-        RoutineViewModel().apply {
-            toggleTheme()
-        }
-    }
     RoutineScreen(viewModel = viewModel)
 }

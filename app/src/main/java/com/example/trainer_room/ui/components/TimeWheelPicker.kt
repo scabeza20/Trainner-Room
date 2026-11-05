@@ -1,40 +1,30 @@
 package com.example.trainer_room.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -44,41 +34,45 @@ import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun WheelPickerColumn(
+fun WheelDrumColumn(
     range: IntRange,
     selectedValue: Int,
     onValueChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    itemHeight: Dp = 50.dp
+    itemHeight: Dp = 52.dp
 ) {
     val count = range.count()
-    val initialIndex = (selectedValue - range.first).coerceIn(0, count - 1)
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+    val multiplier = 200
+    val middleOffset = (multiplier / 2) * count
+    val initialFirstVisible = remember(range) {
+        val center = middleOffset + (selectedValue - range.first).coerceIn(0, count - 1)
+        (center - 1).coerceAtLeast(0)
+    }
+
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialFirstVisible)
     val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    LaunchedEffect(selectedValue) {
-        val targetIndex = (selectedValue - range.first).coerceIn(0, count - 1)
-        if (listState.firstVisibleItemIndex != targetIndex && !listState.isScrollInProgress) {
-            listState.animateScrollToItem(targetIndex)
-        }
-    }
-
-    val selectedIndex by remember {
+    val centerIndex by remember {
         derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val visibleItems = layoutInfo.visibleItemsInfo
-            if (visibleItems.isEmpty()) initialIndex
-            else {
-                val centerOffset = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
-                visibleItems.minByOrNull { kotlin.math.abs((it.offset + it.size / 2) - centerOffset) }?.index ?: initialIndex
-            }
+            listState.firstVisibleItemIndex + 1
         }
     }
 
-    LaunchedEffect(selectedIndex) {
-        val calculatedValue = range.first + selectedIndex
-        if (calculatedValue != selectedValue) {
-            onValueChange(calculatedValue)
+    LaunchedEffect(centerIndex) {
+        val calculated = range.first + (centerIndex % count)
+        if (calculated != selectedValue) {
+            onValueChange(calculated)
+        }
+    }
+
+    LaunchedEffect(selectedValue) {
+        if (!listState.isScrollInProgress) {
+            val currentCalculated = range.first + (centerIndex % count)
+            if (currentCalculated != selectedValue) {
+                val currentBase = (centerIndex / count) * count
+                val targetCenter = currentBase + (selectedValue - range.first)
+                listState.scrollToItem((targetCenter - 1).coerceAtLeast(0))
+            }
         }
     }
 
@@ -89,14 +83,11 @@ fun WheelPickerColumn(
         LazyColumn(
             state = listState,
             flingBehavior = snapFlingBehavior,
-            contentPadding = PaddingValues(vertical = itemHeight),
             modifier = Modifier.height(itemHeight * 3)
         ) {
-            items(count) { index ->
-                val value = range.first + index
-                val isSelected = index == selectedIndex
-                val alpha by animateFloatAsState(if (isSelected) 1.0f else 0.35f, label = "alpha")
-                val scale by animateFloatAsState(if (isSelected) 1.15f else 0.85f, label = "scale")
+            items(count * multiplier) { index ->
+                val value = range.first + (index % count)
+                val isSelected = index == centerIndex
 
                 Box(
                     modifier = Modifier
@@ -106,12 +97,13 @@ fun WheelPickerColumn(
                 ) {
                     Text(
                         text = String.format(Locale.US, "%02d", value),
-                        fontSize = if (isSelected) 36.sp else 28.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = Color.White,
-                        modifier = Modifier
-                            .alpha(alpha)
-                            .scale(scale),
+                        fontSize = if (isSelected) 32.sp else 26.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            TrainerRoomTheme.extendedColors.onMuted.copy(alpha = 0.40f)
+                        },
                         textAlign = TextAlign.Center
                     )
                 }
@@ -128,153 +120,109 @@ fun TimeWheelPicker(
     onTimeChange: (h: Int, m: Int, s: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var hoursText by remember(hours) { mutableStateOf(String.format(Locale.US, "%02d", hours)) }
-    var minutesText by remember(minutes) { mutableStateOf(String.format(Locale.US, "%02d", minutes)) }
-    var secondsText by remember(seconds) { mutableStateOf(String.format(Locale.US, "%02d", seconds)) }
+    val itemHeight = 52.dp
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Encabezados superiores
+        // Títulos de columnas: Horas, Minutos, Segundos (como en prototipo-modal.png)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp),
+                .padding(bottom = 6.dp),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
-            Text(text = "Hours", fontSize = 14.sp, color = Color.Gray, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-            Text(text = "Minutes", fontSize = 14.sp, color = Color.Gray, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-            Text(text = "Seconds", fontSize = 14.sp, color = Color.Gray, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        }
-
-        // Ruedas selectoras (Deslizado)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            WheelPickerColumn(
-                range = 0..23,
-                selectedValue = hours,
-                onValueChange = { h -> onTimeChange(h, minutes, seconds) },
-                modifier = Modifier.weight(1f)
-            )
-
             Text(
-                text = ":",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                text = "Horas",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = TrainerRoomTheme.extendedColors.onMuted,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
             )
-
-            WheelPickerColumn(
-                range = 0..59,
-                selectedValue = minutes,
-                onValueChange = { m -> onTimeChange(hours, m, seconds) },
-                modifier = Modifier.weight(1f)
-            )
-
             Text(
-                text = ":",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                text = "Minutos",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = TrainerRoomTheme.extendedColors.onMuted,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
             )
-
-            WheelPickerColumn(
-                range = 0..59,
-                selectedValue = seconds,
-                onValueChange = { s -> onTimeChange(hours, minutes, s) },
-                modifier = Modifier.weight(1f)
+            Text(
+                text = "Segundos",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = TrainerRoomTheme.extendedColors.onMuted,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Entradas manuales de texto (Escribir el tiempo directamente)
-        Text(
-            text = "O escribe el tiempo deseado:",
-            fontSize = 12.sp,
-            color = TrainerRoomTheme.extendedColors.onMuted,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+        // Tambor de 3 columnas con banda destacada redondeada al centro
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(itemHeight * 3),
+            contentAlignment = Alignment.Center
         ) {
-            // Campo Horas
-            OutlinedTextField(
-                value = hoursText,
-                onValueChange = { input ->
-                    val filtered = input.filter { it.isDigit() }.take(2)
-                    hoursText = filtered
-                    val hVal = filtered.toIntOrNull()?.coerceIn(0, 23) ?: 0
-                    onTimeChange(hVal, minutes, seconds)
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.width(68.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = TrainerRoomTheme.extendedColors.outline,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
-                )
+            // Banda destacada redondeada (surfaceHi)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(itemHeight)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(TrainerRoomTheme.extendedColors.surfaceHi)
             )
 
-            Text(text = ":", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp))
-
-            // Campo Minutos
-            OutlinedTextField(
-                value = minutesText,
-                onValueChange = { input ->
-                    val filtered = input.filter { it.isDigit() }.take(2)
-                    minutesText = filtered
-                    val mVal = filtered.toIntOrNull()?.coerceIn(0, 59) ?: 0
-                    onTimeChange(hours, mVal, seconds)
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.width(68.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = TrainerRoomTheme.extendedColors.outline,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+            // Columnas y separadores ":"
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                WheelDrumColumn(
+                    range = 0..99,
+                    selectedValue = hours,
+                    onValueChange = { h -> onTimeChange(h, minutes, seconds) },
+                    itemHeight = itemHeight,
+                    modifier = Modifier.weight(1f)
                 )
-            )
 
-            Text(text = ":", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp))
-
-            // Campo Segundos
-            OutlinedTextField(
-                value = secondsText,
-                onValueChange = { input ->
-                    val filtered = input.filter { it.isDigit() }.take(2)
-                    secondsText = filtered
-                    val sVal = filtered.toIntOrNull()?.coerceIn(0, 59) ?: 0
-                    onTimeChange(hours, minutes, sVal)
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.width(68.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = TrainerRoomTheme.extendedColors.outline,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                Text(
+                    text = ":",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 2.dp)
                 )
-            )
+
+                WheelDrumColumn(
+                    range = 0..59,
+                    selectedValue = minutes,
+                    onValueChange = { m -> onTimeChange(hours, m, seconds) },
+                    itemHeight = itemHeight,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Text(
+                    text = ":",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                )
+
+                WheelDrumColumn(
+                    range = 0..59,
+                    selectedValue = seconds,
+                    onValueChange = { s -> onTimeChange(hours, minutes, s) },
+                    itemHeight = itemHeight,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }

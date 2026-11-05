@@ -2,7 +2,7 @@ package com.example.trainer_room.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Modo Oscuro Tokens
+// Modo Oscuro Tokens (de prototype/index.html)
 val DarkBackground = Color(0xFF1F2022)
 val DarkSurface = Color(0xFF272829)
 val DarkSurfaceHi = Color(0xFF323335)
@@ -12,8 +12,12 @@ val DarkOnMuted = Color(0xFFA9ABAD)
 val DarkPrimary = Color(0xFFA8C7FA)
 val DarkOnPrimary = Color(0xFF0842A0)
 val DarkPrimaryDim = Color(0xFF0B4AA8)
+val DarkOnShape = Color(0xFF1F2022)
+val DarkOk = Color(0xFF81DB8A)
+val DarkTonalContent = Color(0xFFA8C7FA)
+val DeleteRedDark = Color(0xFFEA9490)
 
-// Modo Claro Tokens
+// Modo Claro Tokens (de prototype/index.html)
 val LightBackground = Color(0xFFF8F9FA)
 val LightSurface = Color(0xFFFFFFFF)
 val LightSurfaceHi = Color(0xFFE9EEF6)
@@ -23,6 +27,10 @@ val LightOnMuted = Color(0xFF5F6368)
 val LightPrimary = Color(0xFF0B57D0)
 val LightOnPrimary = Color(0xFFFFFFFF)
 val LightPrimaryDim = Color(0xFFC2D7F8)
+val LightOnShape = Color(0xFFFFFFFF)
+val LightOk = Color(0xFF1E8E3E)
+val LightTonalContent = Color(0xFF0842A0)
+val DeleteRedLight = Color(0xFFE8786F)
 
 // Colores de Insignia y Acentos - Modo Oscuro
 val DarkBadgeCoral = Color(0xFFEA9490)

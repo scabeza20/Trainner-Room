@@ -1,8 +1,8 @@
 package com.example.trainer_room.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,8 +24,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,17 +52,19 @@ fun EditMainRoutineModal(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
+            // Título (SIN botón de eliminar, ya que el contador principal no puede eliminarse)
             Text(
                 text = "Editar Rutina Principal",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -73,72 +73,91 @@ fun EditMainRoutineModal(
             OutlinedTextField(
                 value = routineTitle,
                 onValueChange = { routineTitle = it },
-                label = { Text("Nombre de la rutina") },
+                label = { Text("Nombre") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = TrainerRoomTheme.extendedColors.outline
+                    unfocusedBorderColor = TrainerRoomTheme.extendedColors.outline,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 )
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = "Fijar Tiempo Objetivo (00:00:00 para conteo libre)",
-                fontSize = 14.sp,
+                text = "Tiempo objetivo (00:00:00 para conteo libre)",
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = TrainerRoomTheme.extendedColors.onMuted,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 4.dp)
             )
 
-            // Selector Rueda + Teclado para tiempo principal
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF151617))
-                    .padding(8.dp)
-            ) {
-                TimeWheelPicker(
-                    hours = hours,
-                    minutes = minutes,
-                    seconds = seconds,
-                    onTimeChange = { h, m, s ->
-                        hours = h
-                        minutes = m
-                        seconds = s
-                    }
-                )
-            }
+            // Selector Horario con tambor destacado
+            TimeWheelPicker(
+                hours = hours,
+                minutes = minutes,
+                seconds = seconds,
+                onTimeChange = { h, m, s ->
+                    hours = h
+                    minutes = m
+                    seconds = s
+                }
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botón Guardar Cambios
-            Button(
-                onClick = {
-                    val totalSecs = (hours * 3600) + (minutes * 60) + seconds
-                    onSaveMainRoutine(routineTitle, totalSecs)
-                    onDismissRequest()
-                },
+            // Botones inferiores: Cancelar y Guardar
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                    .padding(bottom = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "Guardar Cambios",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+                // Cancelar (Tonal)
+                Button(
+                    onClick = onDismissRequest,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TrainerRoomTheme.extendedColors.primaryDim,
+                        contentColor = TrainerRoomTheme.extendedColors.tonalContent
+                    )
+                ) {
+                    Text(
+                        text = "Cancelar",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                // Guardar (Primario)
+                Button(
+                    onClick = {
+                        val totalSecs = (hours * 3600) + (minutes * 60) + seconds
+                        onSaveMainRoutine(routineTitle, totalSecs)
+                        onDismissRequest()
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Guardar",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }
